@@ -24,6 +24,7 @@
       - "jq"
       - "vim"
       - "tree"
+      - "git"
       - "bash-completion"
       - "bash-completion-extras"
   yum:
