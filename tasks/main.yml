@@ -1,0 +1,172 @@
+---
+# tasks file for ansible-os-config-students
+- name: update all packages # noqa 403
+  become: true
+  tags:
+    - vm
+    - students
+    - prepare
+  yum:
+    name: "*"
+    state: latest
+
+- name: Install epel-release
+  become: true
+  yum:
+    name: epel-release
+
+- name: Install dependencies
+  become: true
+  vars:
+    packages:
+      - "python-pip"
+      - "python3"
+      - "jq"
+      - "vim"
+      - "tree"
+      - "bash-completion"
+      - "bash-completion-extras"
+  yum:
+    name: "{{ packages }}"
+
+- name: install sshd
+  become: true
+  yum:
+    name: openssh-server
+
+- name: Insall iptables
+  become: true
+  yum:
+    name: iptables
+
+- name: Allow new incoming SYN packets on TCP port 22 (SSH).
+  become: true
+  iptables:
+    chain: INPUT
+    protocol: tcp
+    destination_port: "22"
+    ctstate: NEW
+    syn: match
+    jump: ACCEPT
+    comment: Accept new SSH connections.
+
+- name: Install docker dependencies
+  become: true
+  tags:
+    - docker
+    - dependencies
+  vars:
+    packages:
+      - yum-utils
+      - device-mapper-persistent-data
+      - lvm2
+      - e2fsprogs
+  yum:
+    name: "{{ packages }}"
+
+- name: Add docker repo
+  become: true
+  tags:
+    - docker
+    - repository
+  yum_repository:
+    name: docker-ce-stable
+    description: Docker CE Stable
+    enabled: true
+    baseurl: https://download.docker.com/linux/centos/7/$basearch/stable
+    gpgkey: https://download.docker.com/linux/centos/gpg
+    gpgcheck: true
+
+- name: Install docker components
+  become: true
+  tags:
+    - docker
+  vars:
+    packages:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+  yum:
+    name: "{{ packages }}"
+
+- name: Enable and start the docker service
+  become: true
+  tags:
+    - docker
+  systemd:
+    name: docker
+    state: started
+    enabled: true
+
+- name: Install buildah
+  become: true
+  tags:
+    - buildah
+  vars:
+    packages:
+      - buildah
+  yum:
+    name: "{{ packages }}"
+
+- name: install kubernetes repo
+  become: true
+  tags:
+    - kubectl
+  copy:
+    src: kubernetes.repo
+    dest: /etc/yum.repos.d/kubernetes.repo
+
+- name: install kubectl
+  become: true
+  tags:
+    - kubectl
+  yum:
+    name: kubectl
+
+- name: download operatorsdk # noqa 204
+  become: true
+  tags:
+    - operator-sdk
+  get_url:
+    url: "https://github.com/operator-framework/operator-sdk/releases/download/{{ operator_version }}/operator-sdk-{{ operator_version }}-x86_64-linux-gnu"
+    dest: /usr/local/bin/operator-sdk
+    mode: '0755'
+
+- name: download kind # noqa 204
+  become: true
+  tags:
+    - kind
+  get_url:
+    url: "https://github.com/kubernetes-sigs/kind/releases/download/{{ kind_version }}/kind-linux-amd64"
+    dest: /usr/local/bin/kind
+    mode: '0755'
+
+- name: create akra user
+  become: true
+  tags:
+    - user
+  user:
+    name: akra
+    groups:
+      - docker
+    append: yes
+    password: "{{ akra_user_password }}"
+
+- name: enable sudo for user akra
+  become: true
+  tags:
+    - user
+  copy:
+    src: akra
+    dest: /etc/sudoers.d/akra
+
+- name: enable ssh access with password
+  become: true
+  tags:
+    - user
+  blockinfile:
+    path: /etc/ssh/sshd_config
+    block: |
+      Match User akra
+        PasswordAuthentication yes
+  notify: restart sshd
