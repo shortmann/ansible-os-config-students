@@ -20,7 +20,12 @@
   vars:
     packages:
       - "python-pip"
-      - "python3"
+      - "python-devel"
+      - "python-virtualenv"
+      - "python36"
+      - "python3-devel"
+      - "python3-virtualenv"
+      - "python3-pip"
       - "jq"
       - "vim"
       - "tree"
