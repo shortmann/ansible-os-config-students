@@ -15,6 +15,12 @@
   yum:
     name: epel-release
 
+- name: uninstall
+  become: true
+  yum:
+    name: nginx
+    state: absent
+
 - name: Install dependencies
   become: true
   vars:
@@ -32,6 +38,7 @@
       - "git"
       - "bash-completion"
       - "bash-completion-extras"
+      - "shellinabox"
   yum:
     name: "{{ packages }}"
 
@@ -176,3 +183,9 @@
       Match User akra
         PasswordAuthentication yes
   notify: restart sshd
+
+- name: copy config
+  become: true
+  copy:
+    src: shellinaboxd
+    dest: /etc/sysconfig/shellinaboxd
